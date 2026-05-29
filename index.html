@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>Зеленое меню | Планировщик блюд</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #eaf7e6 0%, #c8e6c9 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 1rem;
+            position: relative;
+        }
+
+        /* главный контейнер таблицы — адаптивный, без лишних отступов */
+        .table-wrapper {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 35px -12px rgba(40, 70, 30, 0.35);
+            overflow-x: auto;
+            overflow-y: visible;
+            position: relative;
+        }
+
+        /* зелено-белая таблица */
+        .menu-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background-color: #ffffff;
+            min-width: 560px;
+        }
+
+        .menu-table th,
+        .menu-table td {
+            padding: 0.85rem 0.5rem;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #d9f0d0;
+            border-right: 1px solid #eaf7e4;
+            transition: background 0.15s ease;
+        }
+
+        .menu-table th:last-child,
+        .menu-table td:last-child {
+            border-right: none;
+        }
+
+        /* шапка */
+        .menu-table thead tr {
+            background-color: #2b5e2f;
+        }
+
+        .menu-table th {
+            background-color: #2b5e2f;
+            color: #f9fff7;
+            font-weight: 600;
+            border-bottom: 2px solid #1f4522;
+            border-right: 1px solid #408544;
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        /* левый столбец (категории) */
+        .menu-table tbody tr td:first-child {
+            background-color: #f8fff5;
+            font-weight: 600;
+            color: #1c4d1f;
+            border-right: 2px solid #bcddae;
+            text-align: left;
+            padding-left: 1rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        /* обычные ячейки с блюдами — кликабельны */
+        .menu-table tbody td {
+            background-color: #ffffff;
+            color: #2c3a2b;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            word-break: break-word;
+            white-space: normal;
+            line-height: 1.3;
+        }
+
+        /* ПРИ НАВЕДЕНИИ: выделяется ТОЛЬКО ОДНА КЛЕТКА (а не вся строка) */
+        .menu-table tbody td:hover {
+            background-color: #d4edc9 !important;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+
+        /* легкий эффект для первой колонки при наведении на неё — но она не кликабельна, тоже только ячейка */
+        .menu-table tbody tr td:first-child:hover {
+            background-color: #e8f5e2;
+            cursor: default;
+        }
+
+        /* четные строки — но фон ячеек меняется только при ховере на конкретную ячейку */
+        .menu-table tbody tr:nth-child(even) td {
+            background-color: #fdfdf5;
+        }
+        .menu-table tbody tr:nth-child(even) td:first-child {
+            background-color: #f4fff0;
+        }
+
+        /* подсказка при наведении, если блюдо есть */
+        .menu-table td[data-has-dish="true"]:hover::after {
+            content: "✏️ изменить";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2b5e2f;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 30px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
+            margin-bottom: 4px;
+        }
+
+        /* кнопка-плюсик */
+        .floating-add-btn {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 56px;
+            height: 56px;
+            background-color: #2b5e2f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+            transition: all 0.2s ease;
+            z-index: 1000;
+            border: 2px solid white;
+        }
+
+        .floating-add-btn:hover {
+            background-color: #1f4522;
+            transform: scale(1.05);
+        }
+
+        .floating-add-btn svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* кнопка Сбросить меню — в левом нижнем углу */
+        .reset-btn {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            background-color: #fff3e0;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 60px;
+            font-weight: bold;
+            color: #2b5e2f;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 1000;
+            font-family: inherit;
+            backdrop-filter: blur(2px);
+            background-color: rgba(255, 248, 225, 0.95);
+            border: 1px solid #c8e0be;
+        }
+
+        .reset-btn:hover {
+            background-color: #ffe6b3;
+            transform: scale(1.02);
+        }
+
+        /* модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(30, 50, 20, 0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 1.8rem;
+            width: 100%;
+            max-width: 450px;
+            padding: 1.5rem 1.5rem 2rem;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            border-top: 8px solid #2b5e2f;
+        }
+
+        .modal-content h3 {
+            font-size: 1.5rem;
+            color: #1c4d1f;
+            margin-bottom: 1.2rem;
+        }
+
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 8px 0 18px;
+            border-radius: 60px;
+            border: 1.5px solid #c8e0be;
+            font-size: 1rem;
+            outline: none;
+            background-color: #fefef7;
+            font-family: inherit;
+        }
+
+        .modal-content input:focus, .modal-content select:focus {
+            border-color: #2b5e2f;
+            box-shadow: 0 0 0 2px rgba(43, 94, 47, 0.2);
+        }
+
+        .modal-content button {
+            background-color: #2b5e2f;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 6px;
+            width: 100%;
+        }
+
+        .modal-content button:hover {
+            background-color: #1f4522;
+        }
+
+        .close-modal {
+            background: #e0e7db !important;
+            color: #2b5e2f !important;
+            margin-top: 12px;
+        }
+
+        .dishes-list {
+            max-height: 320px;
+            overflow-y: auto;
+            margin: 15px 0;
+            text-align: left;
+            border-top: 1px solid #d9f0d0;
+            border-bottom: 1px solid #d9f0d0;
+        }
+
+        .dish-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 12px;
+            border-bottom: 1px solid #eaf7e4;
+            cursor: pointer;
+            transition: background 0.1s;
+            border-radius: 20px;
+        }
+
+        .dish-item:hover {
+            background: #e5f5df;
+        }
+
+        .dish-name-cat {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .dish-category {
+            font-size: 0.7rem;
+            background: #e2f0dc;
+            padding: 3px 12px;
+            border-radius: 30px;
+            color: #1e5622;
+            font-weight: 500;
+        }
+
+        .empty-dishes {
+            text-align: center;
+            color: #6a8e5c;
+            padding: 24px;
+            font-size: 0.9rem;
+        }
+
+        /* адаптация под телефоны */
+        @media (max-width: 700px) {
+            body {
+                padding: 0.75rem;
+            }
+            .menu-table th,
+            .menu-table td {
+                padding: 0.7rem 0.4rem;
+                font-size: 0.75rem;
+            }
+            .menu-table tbody tr td:first-child {
+                font-size: 0.8rem;
+                padding-left: 0.7rem;
+                white-space: normal;
+                word-break: keep-all;
+            }
+            .menu-table th {
+                font-size: 0.7rem;
+                padding: 0.7rem 0.3rem;
+            }
+            .floating-add-btn {
+                bottom: 18px;
+                right: 18px;
+                width: 50px;
+                height: 50px;
+            }
+            .reset-btn {
+                bottom: 18px;
+                left: 18px;
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+            .modal-content {
+                padding: 1.2rem;
+            }
+            .modal-content h3 {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .menu-table {
+                min-width: 520px;
+            }
+            .reset-btn span {
+                display: inline;
+            }
+            .reset-btn {
+                padding: 8px 14px;
+            }
+        }
+
+        /* убираем лишние артефакты */
+        button {
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+
+<div class="table-wrapper">
+    <table class="menu-table" id="menuTable">
+        <thead>
+            <tr>
+                <th>Приём / День</th>
+                <th>Пн</th>
+                <th>Вт</th>
+                <th>Ср</th>
+                <th>Чт</th>
+                <th>Пт</th>
+                <th>Сб</th>
+                <th>Вс</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-meal-type="Завтрак"><td>Завтрак</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Обед"><td>Обед</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Ужин"><td>Ужин</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Супы"><td>Супы</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Мясное"><td>Мясное</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Салаты"><td>Салаты</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr data-meal-type="Десерты"><td>Десерты</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- плавающий плюсик -->
+<div class="floating-add-btn" id="globalAddBtn">
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+</div>
+
+<!-- кнопка сброса меню -->
+<button class="reset-btn" id="resetMenuBtn">🗑️ Сбросить меню</button>
+
+<!-- Модалка создания блюда -->
+<div id="createDishModal" class="modal">
+    <div class="modal-content">
+        <h3>➕ Новое блюдо</h3>
+        <label>Название блюда</label>
+        <input type="text" id="dishNameInput" placeholder="Например: Борщ, Котлета, Цезарь ...">
+        <label>Вид блюда</label>
+        <select id="dishCategorySelect">
+            <option value="Мясное">Мясное</option>
+            <option value="Супы">Супы</option>
+            <option value="Десерты">Десерты</option>
+            <option value="Салаты">Салаты</option>
+        </select>
+        <button id="confirmAddDishBtn">Добавить блюдо</button>
+        <button class="close-modal" id="closeCreateModalBtn">Отмена</button>
+    </div>
+</div>
+
+<!-- Модалка выбора блюда для ячейки -->
+<div id="selectDishModal" class="modal">
+    <div class="modal-content">
+        <h3 id="selectModalTitle">Выбор блюда</h3>
+        <div id="dishesListContainer" class="dishes-list"></div>
+        <button class="close-modal" id="closeSelectModalBtn">Закрыть</button>
+    </div>
+</div>
+
+<script>
+    // ----- Хранилище блюд (изначально пустое, без демо) -----
+    let dishesArray = [];   // СТАРТУЕМ ПОЛНОСТЬЮ ПУСТЫМИ
+
+    // ----- Данные таблицы -----
+    const mealTypes = ["Завтрак", "Обед", "Ужин", "Супы", "Мясное", "Салаты", "Десерты"];
+    const shortDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+    const fullDays = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+    let tableData = {};
+
+    function initTableData() {
+        for (let meal of mealTypes) {
+            tableData[meal] = {};
+            for (let day of fullDays) {
+                tableData[meal][day] = null;
+            }
+        }
+    }
+    initTableData();
+
+    // Сохранение в localStorage
+    function saveToLocalStorage() {
+        const store = {
+            dishes: dishesArray,
+            tableData: tableData
+        };
+        localStorage.setItem("greenMealPlanner", JSON.stringify(store));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem("greenMealPlanner");
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                if (data.dishes) dishesArray = data.dishes;
+                if (data.tableData) {
+                    for (let meal of mealTypes) {
+                        if (data.tableData[meal]) {
+                            tableData[meal] = data.tableData[meal];
+                        }
+                        // гарантия что все дни есть
+                        for (let day of fullDays) {
+                            if (tableData[meal][day] === undefined) tableData[meal][day] = null;
+                        }
+                    }
+                }
+                renderTable();
+            } catch(e) { console.warn(e); }
+        } else {
+            // При первом запуске — пусто, без всяких демо-блюд
+            renderTable();
+        }
+    }
+
+    // Отрисовка таблицы
+    function renderTable() {
+        const tbody = document.querySelector("#menuTable tbody");
+        const rows = tbody.querySelectorAll("tr");
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const meal = mealTypes[i];
+            const cells = row.querySelectorAll("td");
+            // cells[0] — название приема, остальные — дни
+            for (let dayIdx = 0; dayIdx < fullDays.length; dayIdx++) {
+                const fullDay = fullDays[dayIdx];
+                const dishId = tableData[meal]?.[fullDay];
+                const cell = cells[dayIdx + 1];
+                if (dishId !== null && dishId !== undefined) {
+                    const foundDish = dishesArray.find(d => d.id === dishId);
+                    if (foundDish) {
+                        cell.textContent = foundDish.name;
+                        cell.setAttribute("data-has-dish", "true");
+                        cell.setAttribute("data-dish-id", dishId);
+                    } else {
+                        cell.textContent = "";
+                        cell.removeAttribute("data-has-dish");
+                        cell.removeAttribute("data-dish-id");
+                        tableData[meal][fullDay] = null;
+                    }
+                } else {
+                    cell.textContent = "";
+                    cell.removeAttribute("data-has-dish");
+                    cell.removeAttribute("data-dish-id");
+                }
+            }
+        }
+        saveToLocalStorage();
+    }
+
+    // Функция добавления блюда в библиотеку
+    function addDishToLibrary(name, category) {
+        if (!name.trim()) {
+            alert("Введите название блюда");
+            return false;
+        }
+        // проверка на дубликат имени не требуется, но можно
+        const newId = Date.now() + Math.random() * 10000;
+        dishesArray.push({
+            id: newId,
+            name: name.trim(),
+            category: category
+        });
+        saveToLocalStorage();
+        return true;
+    }
+
+    // Получить блюда по категории (для фильтрации)
+    function getDishesByCategory(category) {
+        return dishesArray.filter(d => d.category === category);
+    }
+
+    // Получить все блюда
+    function getAllDishes() {
+        return [...dishesArray];
+    }
+
+    // ------ Модальные окна ------
+    const createModal = document.getElementById("createDishModal");
+    const selectModal = document.getElementById("selectDishModal");
+    const dishNameInput = document.getElementById("dishNameInput");
+    const dishCategorySelect = document.getElementById("dishCategorySelect");
+    const confirmAddBtn = document.getElementById("confirmAddDishBtn");
+    const closeCreateBtn = document.getElementById("closeCreateModalBtn");
+    const closeSelectBtn = document.getElementById("closeSelectModalBtn");
+    const dishesListContainer = document.getElementById("dishesListContainer");
+    const selectModalTitle = document.getElementById("selectModalTitle");
+
+    let currentTargetCell = null;
+    let currentMealType = null;
+    let currentFullDay = null;
+
+    function openCreateModal() {
+        dishNameInput.value = "";
+        dishCategorySelect.value = "Мясное";
+        createModal.style.display = "flex";
+    }
+
+    function closeCreateModal() {
+        createModal.style.display = "none";
+    }
+
+    function closeSelectModal() {
+        selectModal.style.display = "none";
+        currentTargetCell = null;
+        currentMealType = null;
+        currentFullDay = null;
+    }
+
+    // Открыть выбор блюда для ячейки с фильтром по категории строки
+    function openSelectDishModal(meal, fullDay, cellElement) {
+        // Определяем разрешенную категорию: для Завтрак/Обед/Ужин — без ограничений (все блюда)
+        let allowedCategory = null;
+        if (meal !== "Завтрак" && meal !== "Обед" && meal !== "Ужин") {
+            allowedCategory = meal; // "Супы", "Мясное", "Салаты", "Десерты"
+        }
+
+        let filteredDishes = [];
+        if (allowedCategory) {
+            filteredDishes = getDishesByCategory(allowedCategory);
+            selectModalTitle.innerText = `🍽️ Выберите блюдо (${allowedCategory})`;
+        } else {
+            filteredDishes = getAllDishes();
+            selectModalTitle.innerText = `🍽️ Выберите блюдо (любое)`;
+        }
+
+        dishesListContainer.innerHTML = "";
+        if (filteredDishes.length === 0) {
+            const emptyDiv = document.createElement("div");
+            emptyDiv.className = "empty-dishes";
+            emptyDiv.innerText = allowedCategory 
+                ? `Нет блюд в категории "${allowedCategory}". Нажмите на зелёный +, чтобы добавить.`
+                : "Нет добавленных блюд. Нажмите на зелёный плюсик, чтобы создать первое блюдо.";
+            dishesListContainer.appendChild(emptyDiv);
+        } else {
+            filteredDishes.forEach(dish => {
+                const dishDiv = document.createElement("div");
+                dishDiv.className = "dish-item";
+                dishDiv.innerHTML = `
+                    <div class="dish-name-cat">${escapeHtml(dish.name)}</div>
+                    <div class="dish-category">${dish.category}</div>
+                `;
+                dishDiv.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (currentMealType && currentFullDay) {
+                        tableData[currentMealType][currentFullDay] = dish.id;
+                        renderTable();
+                        saveToLocalStorage();
+                        closeSelectModal();
+                    } else {
+                        closeSelectModal();
+                    }
+                });
+                dishesListContainer.appendChild(dishDiv);
+            });
+        }
+
+        currentMealType = meal;
+        currentFullDay = fullDay;
+        currentTargetCell = cellElement;
+        selectModal.style.display = "flex";
+    }
+
+    // Сброс меню: очищает все ячейки таблицы, но блюда из библиотеки НЕ удаляет
+    function resetMenu() {
+        if (confirm("Вы уверены, что хотите сбросить всё меню? Все назначенные блюда в таблице будут удалены. Сами блюда останутся в библиотеке.")) {
+            for (let meal of mealTypes) {
+                for (let day of fullDays) {
+                    tableData[meal][day] = null;
+                }
+            }
+            renderTable();
+            saveToLocalStorage();
+        }
+    }
+
+    // вспомогательный escape
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Обработчик кликов по ячейкам (только кликабельные)
+    function attachTableClickHandler() {
+        const table = document.getElementById("menuTable");
+        table.addEventListener("click", (e) => {
+            let targetCell = e.target.closest("td");
+            if (!targetCell) return;
+            const row = targetCell.closest("tr");
+            if (!row) return;
+            const cells = Array.from(row.querySelectorAll("td"));
+            const colIndex = cells.indexOf(targetCell);
+            // первый столбец (название приема) — не кликабельный для выбора блюда
+            if (colIndex === 0) return;
+            
+            const mealCell = row.querySelector("td:first-child");
+            if (!mealCell) return;
+            const meal = mealCell.innerText.trim();
+            const dayShort = shortDays[colIndex - 1];
+            // находим полное название дня по короткому
+            const fullDay = fullDays[shortDays.findIndex(d => d === dayShort)];
+            if (!fullDay) return;
+            
+            openSelectDishModal(meal, fullDay, targetCell);
+        });
+    }
+
+    // Инициализация событий
+    document.getElementById("globalAddBtn").addEventListener("click", openCreateModal);
+    confirmAddBtn.addEventListener("click", () => {
+        const name = dishNameInput.value.trim();
+        const category = dishCategorySelect.value;
+        if (name === "") {
+            alert("Введите название блюда");
+            return;
+        }
+        addDishToLibrary(name, category);
+        closeCreateModal();
+        alert(`✅ Блюдо "${name}" (${category}) добавлено в библиотеку!`);
+    });
+    closeCreateBtn.addEventListener("click", closeCreateModal);
+    closeSelectBtn.addEventListener("click", closeSelectModal);
+    
+    const resetBtn = document.getElementById("resetMenuBtn");
+    resetBtn.addEventListener("click", resetMenu);
+
+    // Закрытие модалок по клику на фон
+    window.addEventListener("click", (e) => {
+        if (e.target === createModal) closeCreateModal();
+        if (e.target === selectModal) closeSelectModal();
+    });
+
+    // ----- СТАРТ -----
+    loadFromLocalStorage();
+    // Дополнительная очистка от "мертвых" ID блюд в таблице (если блюдо было удалено, но его нет)
+    function cleanupOrphanDishes() {
+        let changed = false;
+        for (let meal of mealTypes) {
+            for (let day of fullDays) {
+                const dishId = tableData[meal]?.[day];
+                if (dishId !== null && dishId !== undefined) {
+                    const exists = dishesArray.some(d => d.id === dishId);
+                    if (!exists) {
+                        tableData[meal][day] = null;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if (changed) {
+            renderTable();
+            saveToLocalStorage();
+        }
+    }
+    cleanupOrphanDishes();
+    attachTableClickHandler();
+
+    // убеждаемся что таблица отображается корректно при старте (никаких демо-блюд, только пустота)
+    // если вдруг в localStorage не было блюд, но массив пуст — ок.
+    if (dishesArray.length === 0) {
+        // просто убедимся, что нет мусора
+        renderTable();
+    }
+</script>
+</body>
+</html>
